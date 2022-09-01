@@ -11,28 +11,57 @@ on:
       - master
 
 jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+         fetch-depth: 1
+         submodules: true
+        fetch-depth: 0
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install build twine
+    - name: build package
+      run: |
+        python -m build --sdist .
+    - name: twine test
+      run: |
+        python -m twine check dist/*
+    - name: Upload package
+      if: github.event_name == 'push'
+      uses: actions/upload-artifact@v1
+      with:
+        name: python-packages
+        path: dist
+    - name: List
+      run: |
+        ls -la dist
+
+
   build:
+    needs: package
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
         python-version: ['3.7', '3.10']
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/download-artifact@v2
+      id: download
       with:
-        fetch-depth: 1
-        submodules: true
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
+        name: python-packages
     - name: Install tools
       run: |
         python -m pip install --upgrade pip
         python -m pip install build
     - name: Build Package
       run: |
+        cd ${{steps.download.outputs.download-path}}
+        ls -lah
         python -m build
-    - name: List
-      run: |
-        ls -la dist
